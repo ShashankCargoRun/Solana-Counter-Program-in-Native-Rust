@@ -83,3 +83,28 @@ fn process_initialize_counter(
 
     // Get a mutable reference to the counter account's data
     let mut account_data = &mut counter_account.data.borrow_mut()[..];
+
+     // Serialize the CounterAccount struct into the account's data
+    counter_data.serialize(&mut account_data)?;
+
+    msg!("Counter initialized with value: {}", initial_value);
+
+    Ok(())
+}
+
+// Update an existing counter's value
+fn process_increment_counter(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
+    let accounts_iter = &mut accounts.iter();
+    let counter_account = next_account_info(accounts_iter)?;
+
+    // Verify account ownership
+    if counter_account.owner != program_id {
+        return Err(ProgramError::IncorrectProgramId);
+    }
+
+    // Mutable borrow the account data
+    let mut data = counter_account.data.borrow_mut();
+
+    // Deserialize the account data into our CounterAccount struct
+    let mut counter_data: CounterAccount = CounterAccount::try_from_slice(&data)?;
+
