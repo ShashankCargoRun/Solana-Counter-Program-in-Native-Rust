@@ -108,3 +108,22 @@ fn process_increment_counter(program_id: &Pubkey, accounts: &[AccountInfo]) -> P
     // Deserialize the account data into our CounterAccount struct
     let mut counter_data: CounterAccount = CounterAccount::try_from_slice(&data)?;
 
+        // Increment the counter value
+    counter_data.count = counter_data
+        .count
+        .checked_add(1)
+        .ok_or(ProgramError::InvalidAccountData)?;
+
+    // Serialize the updated counter data back into the account
+    counter_data.serialize(&mut &mut data[..])?;
+
+    msg!("Counter incremented to: {}", counter_data.count);
+    Ok(())
+}
+
+// Struct representing our counter account's data
+#[derive(BorshSerialize, BorshDeserialize, Debug)]
+pub struct CounterAccount {
+    count: u64,
+}
+
