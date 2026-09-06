@@ -59,3 +59,27 @@ fn process_initialize_counter(
     // Calculate minimum balance for rent exemption
     let rent = Rent::get()?;
     let required_lamports = rent.minimum_balance(account_space);
+
+    // Create the counter account
+    invoke(
+        &system_instruction::create_account(
+            payer_account.key,    // Account paying for the new account
+            counter_account.key,  // Account to be created
+            required_lamports,    // Amount of lamports to transfer to the new account
+            account_space as u64, // Size in bytes to allocate for the data field
+            program_id,           // Set program owner to our program
+        ),
+        &[
+            payer_account.clone(),
+            counter_account.clone(),
+            system_program.clone(),
+        ],
+    )?;
+
+    // Create a new CounterAccount struct with the initial value
+    let counter_data = CounterAccount {
+        count: initial_value,
+    };
+
+    // Get a mutable reference to the counter account's data
+    let mut account_data = &mut counter_account.data.borrow_mut()[..];
