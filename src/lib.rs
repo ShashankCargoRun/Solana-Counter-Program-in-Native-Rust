@@ -156,3 +156,25 @@ mod test {
         let program_id = program_keypair.pubkey();
         svm.add_program_from_file(program_id, "target/deploy/counter.so")
             .unwrap();
+
+              // Create a new keypair to use as the address for our counter account
+        let counter_keypair = Keypair::new();
+        let initial_value: u64 = 42;
+
+        // Step 1: Initialize the counter
+        println!("Testing counter initialization...");
+
+        // Use Borsh serialization for the instruction
+        let init_instruction_data =
+            borsh::to_vec(&CounterInstruction::InitializeCounter { initial_value })
+                .expect("Failed to serialize instruction");
+
+        let initialize_instruction = Instruction::new_with_bytes(
+            program_id,
+            &init_instruction_data,
+            vec![
+                AccountMeta::new(counter_keypair.pubkey(), true),
+                AccountMeta::new(payer.pubkey(), true),
+                AccountMeta::new_readonly(system_program::id(), false),
+            ],
+        );
