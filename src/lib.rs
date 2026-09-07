@@ -127,3 +127,15 @@ pub struct CounterAccount {
     count: u64,
 }
 
+#[cfg(test)]
+mod test {
+    use super::*;
+    use litesvm::LiteSVM;
+    use solana_sdk::{
+        account::ReadableAccount,
+        instruction::{AccountMeta, Instruction},
+        message::Message,
+        signature::{Keypair, Signer},
+        system_program,
+        transaction::Transaction,
+    };
