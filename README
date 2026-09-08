@@ -1,0 +1,429 @@
+# Solana Counter Program in Native Rust
+
+A simple Solana smart contract written in Rust that demonstrates how to create, initialize, store, and update on-chain account data.
+
+The program allows users to:
+
+* Initialize a counter account with a custom value
+* Increment the counter value by `1`
+* Serialize and deserialize instruction and account data using Borsh
+* Test the program locally using LiteSVM
+
+## Overview
+
+This project is a basic Solana program that stores a `u64` counter value inside a dedicated Solana account.
+
+The program supports two instructions:
+
+1. `InitializeCounter` – Creates a new account and initializes the counter with a specified value.
+2. `IncrementCounter` – Increments the existing counter value by one.
+
+## Features
+
+* Built with Rust
+* Uses the Solana Program SDK
+* Uses Borsh for serialization and deserialization
+* Creates rent-exempt accounts
+* Performs account ownership validation
+* Uses checked arithmetic to prevent integer overflow
+* Includes automated testing with LiteSVM
+
+## Program Architecture
+
+```text
+User Transaction
+       │
+       ▼
+process_instruction
+       │
+       ├── InitializeCounter
+       │       │
+       │       ├── Create Counter Account
+       │       ├── Allocate 8 bytes
+       │       └── Store Initial Value
+       │
+       └── IncrementCounter
+               │
+               ├── Verify Account Owner
+               ├── Deserialize Counter Data
+               ├── Increment Value
+               └── Serialize Updated Data
+```
+
+## Account Data Structure
+
+The counter account stores a single unsigned 64-bit integer.
+
+```rust
+#[derive(BorshSerialize, BorshDeserialize, Debug)]
+pub struct CounterAccount {
+    count: u64,
+}
+```
+
+Since `u64` requires 8 bytes, the counter account allocates:
+
+```text
+8 bytes
+```
+
+## Instructions
+
+### 1. InitializeCounter
+
+Creates and initializes a new counter account.
+
+```rust
+CounterInstruction::InitializeCounter {
+    initial_value: u64
+}
+```
+
+#### Required Accounts
+
+| Account         | Signer | Writable | Description                         |
+| --------------- | ------ | -------- | ----------------------------------- |
+| Counter Account | Yes    | Yes      | New account that stores the counter |
+| Payer Account   | Yes    | Yes      | Pays for account creation           |
+| System Program  | No     | No       | Used to create the account          |
+
+#### Example
+
+```rust
+let initial_value: u64 = 42;
+
+let instruction_data =
+    borsh::to_vec(&CounterInstruction::InitializeCounter {
+        initial_value,
+    })?;
+```
+
+The program will:
+
+1. Calculate the rent-exempt balance.
+2. Create a new account.
+3. Allocate 8 bytes of storage.
+4. Assign ownership to the counter program.
+5. Store the initial counter value.
+
+---
+
+### 2. IncrementCounter
+
+Increments an existing counter by `1`.
+
+```rust
+CounterInstruction::IncrementCounter
+```
+
+#### Required Accounts
+
+| Account         | Signer | Writable | Description                          |
+| --------------- | ------ | -------- | ------------------------------------ |
+| Counter Account | No     | Yes      | Account containing the counter value |
+
+The program verifies that the account belongs to the current program before modifying its data.
+
+```rust
+if counter_account.owner != program_id {
+    return Err(ProgramError::IncorrectProgramId);
+}
+```
+
+The counter is incremented safely using checked arithmetic:
+
+```rust
+counter_data.count = counter_data
+    .count
+    .checked_add(1)
+    .ok_or(ProgramError::InvalidAccountData)?;
+```
+
+This prevents integer overflow.
+
+## Instruction Enum
+
+The program uses an enum to determine which operation should be executed.
+
+```rust
+#[derive(BorshSerialize, BorshDeserialize, Debug)]
+pub enum CounterInstruction {
+    InitializeCounter { initial_value: u64 },
+    IncrementCounter,
+}
+```
+
+All instruction data is serialized using Borsh before being sent to the Solana program.
+
+## Program Entry Point
+
+The program entry point receives the transaction instruction and routes it to the appropriate handler.
+
+```rust
+entrypoint!(process_instruction);
+```
+
+The instruction is deserialized and matched:
+
+```rust
+match instruction {
+    CounterInstruction::InitializeCounter { initial_value } => {
+        process_initialize_counter(program_id, accounts, initial_value)?
+    }
+    CounterInstruction::IncrementCounter => {
+        process_increment_counter(program_id, accounts)?
+    }
+};
+```
+
+## Testing
+
+The project uses LiteSVM to test the Solana program locally.
+
+The test performs the following steps:
+
+### Step 1: Create a Local SVM
+
+```rust
+let mut svm = LiteSVM::new();
+```
+
+### Step 2: Create and Fund a Payer
+
+```rust
+let payer = Keypair::new();
+
+svm.airdrop(&payer.pubkey(), 1_000_000_000)
+    .unwrap();
+```
+
+### Step 3: Load the Program
+
+```rust
+let program_keypair = Keypair::new();
+let program_id = program_keypair.pubkey();
+
+svm.add_program_from_file(
+    program_id,
+    "target/deploy/counter.so"
+)
+.unwrap();
+```
+
+### Step 4: Initialize the Counter
+
+The test initializes the counter with the value:
+
+```text
+42
+```
+
+After initialization, the test verifies:
+
+```rust
+assert_eq!(counter.count, 42);
+```
+
+### Step 5: Increment the Counter
+
+The increment instruction is sent to the program.
+
+The test then verifies:
+
+```rust
+assert_eq!(counter.count, 43);
+```
+
+## Expected Test Flow
+
+```text
+Initial Value: 42
+
+        │
+        ▼
+
+Initialize Counter
+
+        │
+        ▼
+
+Counter Value = 42
+
+        │
+        ▼
+
+Increment Counter
+
+        │
+        ▼
+
+Counter Value = 43
+```
+
+## Project Structure
+
+A typical project structure may look like this:
+
+```text
+counter-program/
+│
+├── src/
+│   └── lib.rs
+│
+├── tests/
+│   └── counter_test.rs
+│
+├── Cargo.toml
+├── Cargo.lock
+└── README.md
+```
+
+## Dependencies
+
+This project uses:
+
+* Solana Program SDK
+* Borsh
+* LiteSVM
+* Solana SDK
+
+Example dependencies in `Cargo.toml`:
+
+```toml
+[dependencies]
+borsh = "1.5"
+solana-program = "2"
+
+[dev-dependencies]
+litesvm = "0.4"
+solana-sdk = "2"
+```
+
+> Dependency versions may vary depending on your Solana toolchain version.
+
+## Build the Program
+
+Build the Solana program using Cargo:
+
+```bash
+cargo build-sbf
+```
+
+After a successful build, the compiled program should be available in:
+
+```text
+target/deploy/counter.so
+```
+
+## Run Tests
+
+Run the test suite using:
+
+```bash
+cargo test
+```
+
+The test verifies both major program operations:
+
+```text
+✓ Counter initialization
+✓ Counter increment
+```
+
+Expected behavior:
+
+```text
+Counter initialized with value: 42
+Counter incremented to: 43
+```
+
+## Key Concepts Demonstrated
+
+This project demonstrates several important Solana development concepts:
+
+### Account Ownership
+
+The program verifies that an account belongs to the program before modifying its data.
+
+### Account Creation
+
+The System Program is invoked through CPI (Cross-Program Invocation) to create the counter account.
+
+### Rent Exemption
+
+The program calculates the minimum number of lamports required to make the account rent-exempt.
+
+### Serialization
+
+Borsh is used to serialize:
+
+* Program instructions
+* Account data
+
+### Safe Arithmetic
+
+The program uses `checked_add()` to safely increment the counter and prevent overflow.
+
+## Example Usage
+
+### Initialize
+
+```text
+Instruction: InitializeCounter
+Initial Value: 100
+```
+
+Result:
+
+```text
+Counter = 100
+```
+
+### Increment
+
+```text
+Instruction: IncrementCounter
+```
+
+Result:
+
+```text
+Counter = 101
+```
+
+## Learning Purpose
+
+This project is intended as a beginner-friendly example for understanding:
+
+* Solana program architecture
+* Program instructions
+* Account creation
+* Account ownership
+* Cross-Program Invocation (CPI)
+* Borsh serialization
+* On-chain state management
+* Local Solana program testing
+
+## Future Improvements
+
+Possible improvements include:
+
+* Add a decrement instruction
+* Add a reset counter instruction
+* Add an authority account
+* Restrict who can increment the counter
+* Use a Program Derived Address (PDA)
+* Add custom error types
+* Add integration tests
+* Build a frontend using Solana Web3.js
+
+## License
+
+This project is open-source and available for educational purposes.
+
+---
+
+## Author
+Shashank Mishra
+
+Built as a simple educational project to demonstrate Solana smart contract development using Rust.
