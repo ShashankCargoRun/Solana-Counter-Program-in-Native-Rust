@@ -221,3 +221,7 @@ mod test {
         let message = Message::new(&[increment_instruction], Some(&payer.pubkey()));
         let transaction =
             Transaction::new(&[&payer, &counter_keypair], message, svm.latest_blockhash());
+
+                 // Send transaction
+        let result = svm.send_transaction(transaction);
+        assert!(result.is_ok(), "Increment transaction should succeed");
