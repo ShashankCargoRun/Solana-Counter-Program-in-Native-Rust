@@ -203,3 +203,16 @@ mod test {
             "Counter initialized successfully with value: {}",
             counter.count
         );
+
+         // Step 2: Increment the counter
+        println!("Testing counter increment...");
+
+        // Use Borsh serialization for increment instruction
+        let increment_data = borsh::to_vec(&CounterInstruction::IncrementCounter)
+            .expect("Failed to serialize instruction");
+
+        let increment_instruction = Instruction::new_with_bytes(
+            program_id,
+            &increment_data,
+            vec![AccountMeta::new(counter_keypair.pubkey(), true)],
+        );
