@@ -228,3 +228,8 @@ mod test {
 
         let logs = result.unwrap().logs;
         println!("Transaction logs:\n{:#?}", logs);
+
+         // Check account data
+        let account = svm
+            .get_account(&counter_keypair.pubkey())
+            .expect("Failed to get counter account");
