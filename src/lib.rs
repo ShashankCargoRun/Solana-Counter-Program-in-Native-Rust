@@ -216,3 +216,8 @@ mod test {
             &increment_data,
             vec![AccountMeta::new(counter_keypair.pubkey(), true)],
         );
+
+        // Create transaction
+        let message = Message::new(&[increment_instruction], Some(&payer.pubkey()));
+        let transaction =
+            Transaction::new(&[&payer, &counter_keypair], message, svm.latest_blockhash());
