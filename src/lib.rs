@@ -225,3 +225,6 @@ mod test {
                  // Send transaction
         let result = svm.send_transaction(transaction);
         assert!(result.is_ok(), "Increment transaction should succeed");
+
+        let logs = result.unwrap().logs;
+        println!("Transaction logs:\n{:#?}", logs);
