@@ -233,3 +233,10 @@ mod test {
         let account = svm
             .get_account(&counter_keypair.pubkey())
             .expect("Failed to get counter account");
+
+              let counter: CounterAccount = CounterAccount::try_from_slice(account.data())
+            .expect("Failed to deserialize counter data");
+        assert_eq!(counter.count, 43);
+        println!("Counter incremented successfully to: {}", counter.count);
+    }
+}
