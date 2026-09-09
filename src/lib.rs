@@ -240,3 +240,12 @@ mod test {
         println!("Counter incremented successfully to: {}", counter.count);
     }
 }
+
+
+
+
+
+
+
+// cargo build-sbf
+// cargo test -- --nocapture
